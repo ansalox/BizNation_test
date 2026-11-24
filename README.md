@@ -1,6 +1,6 @@
 # Biz Nation — Plataforma LMS Full Stack (Prueba Técnica)
 
-Monorepo desarrollado bajo arquitectura limpia con **Node.js LTS (`26.13.1`)**, **pnpm**, **Express.js + TypeScript + Sequelize + PostgreSQL 16 + Swagger**, **Angular 22 (Standalone Components)** y **Vitest + Supertest**.
+Monorepo desarrollado bajo arquitectura limpia por Andres Sanchez con **Node.js LTS (`26.13.1`)**, **pnpm**, **Express.js + TypeScript + Sequelize + PostgreSQL 16 + Swagger**, **Angular 22 (Standalone Components)** y **Vitest + Supertest**.
 
 - Reglas obligatorias de arquitectura y estilo: [PROJECT_RULES.md](PROJECT_RULES.md)
 - Diseño cloud objetivo en AWS, costos y estrategia de resiliencia: [docs/AWS_ARCHITECTURE.md](docs/AWS_ARCHITECTURE.md)
