@@ -1,0 +1,229 @@
+<div class="bn-container student-page">
+  <section class="bn-card summary-banner">
+    <div>
+      <h1>Mi Aprendizaje</h1>
+      @if (currentUser(); as user) {
+        <p class="summary-subtitle">
+          Bienvenido, <strong>{{ user.name }}</strong>. Clasificación actual:
+          <span class="bn-badge bn-badge-info">{{ user.classification || 'Sin clasificar' }}</span>
+        </p>
+      }
+    </div>
+    <div class="summary-score-box">
+      <div class="score-label">
+        <span>Avance promedio visible</span>
+        <strong>{{ averageCatalogProgress() }}%</strong>
+      </div>
+      <div class="bn-progress-track">
+        <div class="bn-progress-fill" [style.width.%]="averageCatalogProgress()"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bn-card filters-card">
+    <form class="filters-grid" (ngSubmit)="applyFilters()">
+      <div>
+        <label class="bn-label" for="searchTitle">Buscar por título</label>
+        <input
+          id="searchTitle"
+          name="searchTitle"
+          type="text"
+          class="bn-input"
+          placeholder="Ej. Emprendimiento, Finanzas..."
+          [ngModel]="searchTitle()"
+          (ngModelChange)="searchTitle.set($event)"
+        />
+      </div>
+      <div>
+        <label class="bn-label" for="startDate">Desde</label>
+        <input
+          id="startDate"
+          name="startDate"
+          type="date"
+          class="bn-input"
+          [ngModel]="startDate()"
+          (ngModelChange)="startDate.set($event)"
+        />
+      </div>
+      <div>
+        <label class="bn-label" for="endDate">Hasta</label>
+        <input
+          id="endDate"
+          name="endDate"
+          type="date"
+          class="bn-input"
+          [ngModel]="endDate()"
+          (ngModelChange)="endDate.set($event)"
+        />
+      </div>
+      <div>
+        <label class="bn-label" for="minProgress">Progreso mín (%)</label>
+        <input
+          id="minProgress"
+          name="minProgress"
+          type="number"
+          min="0"
+          max="100"
+          class="bn-input"
+          [ngModel]="minProgress()"
+          (ngModelChange)="minProgress.set($event === '' || $event === null ? null : +$event)"
+        />
+      </div>
+      <div>
+        <label class="bn-label" for="maxProgress">Progreso máx (%)</label>
+        <input
+          id="maxProgress"
+          name="maxProgress"
+          type="number"
+          min="0"
+          max="100"
+          class="bn-input"
+          [ngModel]="maxProgress()"
+          (ngModelChange)="maxProgress.set($event === '' || $event === null ? null : +$event)"
+        />
+      </div>
+      <div class="filters-actions">
+        <button type="submit" class="bn-btn bn-btn-primary">Filtrar</button>
+        <button type="button" class="bn-btn bn-btn-secondary" (click)="resetFilters()">
+          Limpiar
+        </button>
+      </div>
+    </form>
+  </section>
+
+  @if (errorMessage(); as error) {
+    <div class="bn-alert bn-alert-error" role="alert">{{ error }}</div>
+  }
+  @if (feedbackMessage(); as msg) {
+    <div class="bn-alert bn-alert-success" role="status">{{ msg }}</div>
+  }
+
+  <div class="student-layout">
+    <section class="courses-column">
+      <div class="section-header">
+        <h2>Cursos publicados ({{ total() }})</h2>
+        @if (loading()) {
+          <span class="muted">Cargando...</span>
+        }
+      </div>
+
+      @if (!loading() && courses().length === 0) {
+        <div class="bn-card empty-state">
+          No se encontraron cursos publicados con los filtros seleccionados.
+        </div>
+      }
+
+      <div class="courses-list">
+        @for (course of courses(); track course.id) {
+          <article
+            class="bn-card course-card"
+            [class.selected]="selectedCourse()?.id === course.id"
+          >
+            <div class="course-card-head">
+              <h3>{{ course.title }}</h3>
+              <span class="bn-badge bn-badge-info">
+                {{ course.completedLessons ?? 0 }}/{{ course.totalLessons }} lecciones
+              </span>
+            </div>
+            <p class="course-desc">{{ course.description }}</p>
+
+            <div class="course-progress">
+              <div class="progress-text">
+                <span>Progreso</span>
+                <strong>{{ course.progressPercentage ?? 0 }}%</strong>
+              </div>
+              <div class="bn-progress-track">
+                <div
+                  class="bn-progress-fill"
+                  [style.width.%]="course.progressPercentage ?? 0"
+                ></div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="bn-btn bn-btn-secondary bn-btn-sm"
+              (click)="selectCourse(course)"
+            >
+              {{ selectedCourse()?.id === course.id ? 'Viendo lecciones' : 'Ver lecciones' }}
+            </button>
+          </article>
+        }
+      </div>
+
+      @if (totalPages() > 1) {
+        <div class="pagination-bar">
+          <button
+            type="button"
+            class="bn-btn bn-btn-secondary bn-btn-sm"
+            [disabled]="page() <= 1"
+            (click)="goToPage(page() - 1)"
+          >
+            Anterior
+          </button>
+          <span>Página {{ page() }} de {{ totalPages() }}</span>
+          <button
+            type="button"
+            class="bn-btn bn-btn-secondary bn-btn-sm"
+            [disabled]="page() >= totalPages()"
+            (click)="goToPage(page() + 1)"
+          >
+            Siguiente
+          </button>
+        </div>
+      }
+    </section>
+
+    <section class="bn-card lessons-column">
+      @if (selectedCourse(); as course) {
+        <div class="lessons-header">
+          <div>
+            <span class="muted">Lecciones del curso</span>
+            <h2>{{ course.title }}</h2>
+          </div>
+          <span class="bn-badge bn-badge-success">{{ course.progressPercentage ?? 0 }}%</span>
+        </div>
+
+        @if (getSortedLessons(course).length === 0) {
+          <p class="muted">Este curso aún no tiene lecciones cargadas.</p>
+        } @else {
+          <ul class="lessons-list">
+            @for (lesson of getSortedLessons(course); track lesson.id) {
+              <li class="lesson-item" [class.completed]="isLessonCompleted(lesson.id)">
+                <div class="lesson-info">
+                  <div class="lesson-title-row">
+                    <span class="lesson-order">#{{ lesson.order_index }}</span>
+                    <strong>{{ lesson.title }}</strong>
+                    @if (isLessonCompleted(lesson.id)) {
+                      <span class="bn-badge bn-badge-success">Completada</span>
+                    }
+                  </div>
+                  <p>{{ lesson.content }}</p>
+                </div>
+
+                <button
+                  type="button"
+                  class="bn-btn bn-btn-sm"
+                  [class.bn-btn-success]="!isLessonCompleted(lesson.id)"
+                  [class.bn-btn-secondary]="isLessonCompleted(lesson.id)"
+                  [disabled]="savingLessonId() === lesson.id"
+                  (click)="toggleLessonCompletion(course, lesson)"
+                >
+                  @if (savingLessonId() === lesson.id) {
+                    Guardando...
+                  } @else if (isLessonCompleted(lesson.id)) {
+                    Desmarcar
+                  } @else {
+                    Marcar como completada
+                  }
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      } @else {
+        <p class="muted">Selecciona un curso para ver sus lecciones.</p>
+      }
+    </section>
+  </div>
+</div>

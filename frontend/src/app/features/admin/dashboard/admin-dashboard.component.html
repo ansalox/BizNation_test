@@ -1,0 +1,466 @@
+<div class="bn-container admin-page">
+  <header class="admin-header">
+    <div>
+      <h1>Panel de Administración — Biz Nation</h1>
+      <p>Gestión de cursos, métricas agregadas, clasificación automática de estudiantes y monitoreo de webhooks.</p>
+    </div>
+    <button type="button" class="bn-btn bn-btn-secondary bn-btn-sm" (click)="loadAllData()">
+      Actualizar todo
+    </button>
+  </header>
+
+  <section class="kpi-grid">
+    <div class="bn-card kpi-card">
+      <span class="kpi-label">Cursos Totales</span>
+      <strong class="kpi-value">{{ coursesTotal() }}</strong>
+    </div>
+    <div class="bn-card kpi-card">
+      <span class="kpi-label">Estudiantes Evaluados</span>
+      <strong class="kpi-value">{{ reportSummary().totalStudents }}</strong>
+    </div>
+    <div class="bn-card kpi-card">
+      <span class="kpi-label">Score Promedio IA</span>
+      <strong class="kpi-value">{{ reportSummary().averageScore }} / 100</strong>
+    </div>
+    <div class="bn-card kpi-card">
+      <span class="kpi-label">Alertas Abiertas</span>
+      <strong class="kpi-value">{{ openAlertsCount() }}</strong>
+    </div>
+  </section>
+
+  <!-- 1. Gestión y Métricas de Cursos -->
+  <section class="admin-two-col">
+    <div class="bn-card">
+      <div class="card-header-row">
+        <h2>Cursos y Métricas Agregadas</h2>
+        <form class="inline-search" (ngSubmit)="searchCourses()">
+          <input
+            type="text"
+            class="bn-input"
+            name="courseSearch"
+            placeholder="Buscar curso..."
+            [ngModel]="courseSearch()"
+            (ngModelChange)="courseSearch.set($event)"
+          />
+          <button type="submit" class="bn-btn bn-btn-secondary bn-btn-sm">Buscar</button>
+        </form>
+      </div>
+
+      @if (courseError(); as err) {
+        <div class="bn-alert bn-alert-error msg-gap" role="alert">
+          <strong>Operación bloqueada:</strong> {{ err }}
+        </div>
+      }
+      @if (courseFeedback(); as msg) {
+        <div class="bn-alert bn-alert-success msg-gap" role="status">{{ msg }}</div>
+      }
+
+      <div class="bn-table-wrap">
+        <table class="bn-table">
+          <thead>
+            <tr>
+              <th>Curso</th>
+              <th>Estado</th>
+              <th>Lecciones</th>
+              <th>Estudiantes c/ progreso</th>
+              <th>Avance promedio</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (course of courses(); track course.id) {
+              <tr>
+                <td>
+                  <strong>{{ course.title }}</strong>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="bn-badge toggle-badge"
+                    [class.bn-badge-success]="course.is_published"
+                    [class.bn-badge-warning]="!course.is_published"
+                    (click)="toggleCoursePublish(course)"
+                    title="Clic para cambiar estado"
+                  >
+                    {{ course.is_published ? 'Publicado' : 'Borrador' }}
+                  </button>
+                </td>
+                <td>{{ course.totalLessons }}</td>
+                <td>{{ course.metrics?.totalStudentsWithProgress ?? 0 }}</td>
+                <td>
+                  <div class="mini-progress">
+                    <span>{{ course.metrics?.averageProgressPercentage ?? 0 }}%</span>
+                    <div class="bn-progress-track">
+                      <div
+                        class="bn-progress-fill"
+                        [style.width.%]="course.metrics?.averageProgressPercentage ?? 0"
+                      ></div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="bn-btn bn-btn-danger bn-btn-sm"
+                    [disabled]="deletingCourseId() === course.id"
+                    (click)="onDeleteCourse(course)"
+                  >
+                    {{ deletingCourseId() === course.id ? 'Eliminando...' : 'Eliminar' }}
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-cell">No hay cursos registrados.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (coursesTotalPages() > 1) {
+        <div class="pagination-bar">
+          <button
+            type="button"
+            class="bn-btn bn-btn-secondary bn-btn-sm"
+            [disabled]="coursesPage() <= 1"
+            (click)="goToCoursePage(coursesPage() - 1)"
+          >
+            Anterior
+          </button>
+          <span>Página {{ coursesPage() }} de {{ coursesTotalPages() }}</span>
+          <button
+            type="button"
+            class="bn-btn bn-btn-secondary bn-btn-sm"
+            [disabled]="coursesPage() >= coursesTotalPages()"
+            (click)="goToCoursePage(coursesPage() + 1)"
+          >
+            Siguiente
+          </button>
+        </div>
+      }
+    </div>
+
+    <div class="bn-card">
+      <h2>Crear Nuevo Curso</h2>
+      <form [formGroup]="createCourseForm" (ngSubmit)="onCreateCourse()" class="stack-form">
+        <div>
+          <label class="bn-label" for="courseTitle">Título del curso</label>
+          <input
+            id="courseTitle"
+            type="text"
+            class="bn-input"
+            formControlName="title"
+            placeholder="Ej. Liderazgo y Estrategia"
+          />
+        </div>
+
+        <div>
+          <label class="bn-label" for="courseDesc">Descripción</label>
+          <textarea
+            id="courseDesc"
+            rows="3"
+            class="bn-textarea"
+            formControlName="description"
+            placeholder="Objetivos y alcance del curso..."
+          ></textarea>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="is_published" />
+          <span>Publicar inmediatamente (visible para estudiantes)</span>
+        </label>
+
+        <button
+          type="submit"
+          class="bn-btn bn-btn-primary"
+          [disabled]="creatingCourse()"
+        >
+          {{ creatingCourse() ? 'Creando...' : 'Crear curso' }}
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- 2. Clasificación Automática de Estudiantes (IA & Scoring) -->
+  <section class="bn-card">
+    <div class="card-header-row">
+      <div>
+        <h2>Clasificación Automática de Estudiantes (Scoring 0–100)</h2>
+        <p class="sub-copy">
+          Combina porcentaje de lecciones completadas (60%) y recencia de actividad (40%).
+        </p>
+      </div>
+      <div class="summary-pills">
+        <span class="bn-badge bn-badge-success">
+          Alto desempeño: {{ reportSummary().byClassification['Alto desempeño'] }}
+        </span>
+        <span class="bn-badge bn-badge-info">
+          En progreso: {{ reportSummary().byClassification['En progreso'] }}
+        </span>
+        <span class="bn-badge bn-badge-warning">
+          En riesgo: {{ reportSummary().byClassification['En riesgo'] }}
+        </span>
+        <span class="bn-badge bn-badge-danger">
+          Inactivo: {{ reportSummary().byClassification['Inactivo'] }}
+        </span>
+      </div>
+    </div>
+
+    <div class="bn-table-wrap">
+      <table class="bn-table">
+        <thead>
+          <tr>
+            <th>Estudiante</th>
+            <th>Correo</th>
+            <th>Lecciones</th>
+            <th>Score</th>
+            <th>Última actividad</th>
+            <th>Clasificación IA</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (student of studentsReport(); track student.id) {
+            <tr>
+              <td><strong>{{ student.name }}</strong></td>
+              <td>{{ student.email }}</td>
+              <td>{{ student.completedLessons }} / {{ student.totalPublishedLessons }}</td>
+              <td>
+                <div class="mini-progress">
+                  <span>{{ student.score }}/100</span>
+                  <div class="bn-progress-track">
+                    <div class="bn-progress-fill" [style.width.%]="student.score"></div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {{ student.last_activity_at ? (student.last_activity_at | date: 'short') : 'Sin actividad' }}
+              </td>
+              <td>
+                <span class="bn-badge" [class]="getClassificationBadgeClass(student.classification)">
+                  {{ student.classification }}
+                </span>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="empty-cell">
+                {{ reportLoading() ? 'Calculando reporte...' : 'No hay estudiantes registrados.' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. Simulador de Webhook WhatsApp + Eventos y Alertas en Vivo -->
+  <section class="admin-two-col webhook-grid">
+    <div class="bn-card">
+      <h2>Simulador de Webhook WhatsApp (HMAC-SHA256)</h2>
+      <p class="sub-copy">
+        Firma el payload con <code>x-hub-signature-256</code> y evalúa idempotencia e IA de soporte.
+      </p>
+
+      @if (webhookError(); as err) {
+        <div class="bn-alert bn-alert-error msg-gap" role="alert">{{ err }}</div>
+      }
+      @if (webhookFeedback(); as msg) {
+        <div class="bn-alert bn-alert-success msg-gap" role="status">{{ msg }}</div>
+      }
+
+      <div class="preset-row">
+        <span class="sub-copy">Mensajes rápidos:</span>
+        <button
+          type="button"
+          class="bn-btn bn-btn-secondary bn-btn-sm"
+          (click)="applyWebhookPreset('Ayuda por favor, no entiendo este error y tengo un problema')"
+        >
+          Soporte Urgente
+        </button>
+        <button
+          type="button"
+          class="bn-btn bn-btn-secondary bn-btn-sm"
+          (click)="applyWebhookPreset('Tengo una duda sobre la lección 2')"
+        >
+          Duda Media
+        </button>
+        <button
+          type="button"
+          class="bn-btn bn-btn-secondary bn-btn-sm"
+          (click)="applyWebhookPreset('¡Muchas gracias, excelente curso!')"
+        >
+          Positivo
+        </button>
+      </div>
+
+      <form [formGroup]="webhookForm" (ngSubmit)="onSendSimulatedWebhook()" class="stack-form">
+        <div class="id-row">
+          <div class="flex-1">
+            <label class="bn-label" for="extId">external_event_id</label>
+            <input id="extId" type="text" class="bn-input" formControlName="external_event_id" />
+          </div>
+          <div class="id-buttons">
+            <button
+              type="button"
+              class="bn-btn bn-btn-secondary bn-btn-sm"
+              (click)="regenerateWebhookEventId()"
+            >
+              Nuevo ID
+            </button>
+            @if (lastSentEventId()) {
+              <button
+                type="button"
+                class="bn-btn bn-btn-secondary bn-btn-sm"
+                (click)="reuseLastWebhookEventId()"
+              >
+                Repetir ID
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="form-split">
+          <div>
+            <label class="bn-label" for="sender">Remitente</label>
+            <input id="sender" type="text" class="bn-input" formControlName="sender" />
+          </div>
+          <div>
+            <label class="bn-label" for="eventType">event_type</label>
+            <input id="eventType" type="text" class="bn-input" formControlName="event_type" />
+          </div>
+        </div>
+
+        <div>
+          <label class="bn-label" for="webhookMsg">Mensaje simulado</label>
+          <textarea
+            id="webhookMsg"
+            rows="2"
+            class="bn-textarea"
+            formControlName="message"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="bn-label" for="webhookSecret">WEBHOOK_SECRET</label>
+          <input id="webhookSecret" type="text" class="bn-input" formControlName="secret" />
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="invalidSignature" />
+          <span>Simular firma HMAC inválida (debe responder 401)</span>
+        </label>
+
+        <button
+          type="submit"
+          class="bn-btn bn-btn-primary"
+          [disabled]="sendingWebhook()"
+        >
+          {{ sendingWebhook() ? 'Enviando...' : 'Enviar evento firmado' }}
+        </button>
+      </form>
+    </div>
+
+    <div class="live-tables-col">
+      <div class="bn-card">
+        <div class="card-header-row">
+          <h2>Alertas e Intención IA ({{ supportAlerts().length }})</h2>
+        </div>
+        <div class="bn-table-wrap">
+          <table class="bn-table">
+            <thead>
+              <tr>
+                <th>Mensaje</th>
+                <th>Prioridad / Sentimiento</th>
+                <th>Keywords</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (alert of supportAlerts(); track alert.id) {
+                <tr>
+                  <td>
+                    <div class="msg-cell">{{ alert.message_text }}</div>
+                    <small class="sub-copy">{{ alert.sender || alert.external_event_id }}</small>
+                  </td>
+                  <td>
+                    <div class="badge-pair">
+                      <span class="bn-badge" [class]="getPriorityBadgeClass(alert.priority)">
+                        {{ alert.priority }}
+                      </span>
+                      <span class="bn-badge" [class]="getSentimentBadgeClass(alert.sentiment)">
+                        {{ alert.sentiment }}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <small>{{ alert.matched_keywords.join(', ') || 'ninguna' }}</small>
+                  </td>
+                  <td>
+                    <div class="status-actions">
+                      <span class="bn-badge bn-badge-neutral">{{ alert.status }}</span>
+                      @if (alert.status !== 'resolved') {
+                        <button
+                          type="button"
+                          class="bn-btn bn-btn-secondary bn-btn-sm"
+                          (click)="onUpdateAlertStatus(alert, 'resolved')"
+                        >
+                          Resolver
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="empty-cell">No hay alertas registradas aún.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bn-card">
+        <div class="card-header-row">
+          <h2>Eventos Webhook Recibidos ({{ webhookEvents().length }})</h2>
+        </div>
+        <div class="bn-table-wrap">
+          <table class="bn-table">
+            <thead>
+              <tr>
+                <th>External ID</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (evt of webhookEvents(); track evt.id) {
+                <tr>
+                  <td><code>{{ evt.external_event_id }}</code></td>
+                  <td>{{ evt.event_type }}</td>
+                  <td>
+                    <span
+                      class="bn-badge"
+                      [class.bn-badge-success]="evt.status === 'processed'"
+                      [class.bn-badge-danger]="evt.status === 'failed'"
+                      [class.bn-badge-info]="evt.status === 'received'"
+                    >
+                      {{ evt.status }}
+                    </span>
+                  </td>
+                  <td>{{ evt.created_at | date: 'short' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="empty-cell">No hay eventos webhook registrados aún.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

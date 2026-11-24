@@ -1,0 +1,78 @@
+.bn-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bn-surface);
+  border-bottom: 1px solid var(--bn-border);
+}
+
+.bn-navbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.bn-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--bn-text);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.bn-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bn-primary);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.bn-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  a {
+    text-decoration: none;
+    color: var(--bn-text-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
+
+    &.active {
+      background: var(--bn-primary-soft);
+      color: var(--bn-primary);
+    }
+  }
+}
+
+.bn-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bn-user-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.bn-user-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+}

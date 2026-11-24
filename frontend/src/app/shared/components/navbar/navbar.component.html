@@ -1,0 +1,37 @@
+@if (auth.isAuthenticated()) {
+  <header class="bn-navbar">
+    <div class="bn-navbar-inner">
+      <a class="bn-brand" [routerLink]="auth.getDefaultRouteForRole()">
+        <span class="bn-brand-mark">BN</span>
+        <span class="bn-brand-text">Biz Nation</span>
+      </a>
+
+      <nav class="bn-nav-links" aria-label="Navegación principal">
+        @if (auth.userRole() === 'student') {
+          <a routerLink="/student" routerLinkActive="active">Mis Cursos</a>
+        }
+        @if (auth.userRole() === 'admin') {
+          <a routerLink="/admin" routerLinkActive="active">Panel Admin</a>
+        }
+      </nav>
+
+      <div class="bn-user-actions">
+        @if (auth.currentUser(); as user) {
+          <div class="bn-user-meta">
+            <span class="bn-user-name">{{ user.name }}</span>
+            <span
+              class="bn-badge"
+              [class.bn-badge-info]="user.role === 'admin'"
+              [class.bn-badge-success]="user.role === 'student'"
+            >
+              {{ user.role === 'admin' ? 'Admin' : 'Estudiante' }}
+            </span>
+          </div>
+        }
+        <button type="button" class="bn-btn bn-btn-secondary bn-btn-sm" (click)="onLogout()">
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+  </header>
+}
